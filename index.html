@@ -102,6 +102,7 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 let currentUser = null;
+let currentUsername = null;
 
 window.createPost = async function() {
   const title = document.getElementById("title").value;
@@ -123,9 +124,19 @@ window.createPost = async function() {
   document.getElementById("content").value = "";
 };
 
-onAuthStateChanged(auth, (user) => {
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      currentUsername = userSnap.data().username;
+    }
+
   } else {
     signInWithPopup(auth, provider);
   }
