@@ -48,6 +48,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyAwZ62fsdkdy4-LkHkLcmV9K-7nCmtow9g",
   authDomain: "fcs-foro.firebaseapp.com",
@@ -59,6 +62,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 window.login = async function() {
@@ -69,11 +73,51 @@ window.logout = async function() {
   await signOut(auth);
 };
 
+async function checkUser(user) {
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    askUsername(user);
+  } else {
+    showUser(userSnap.data().username);
+  }
+}
+
+async function askUsername(user) {
+  const username = prompt("Elige un nombre de usuario único:");
+
+  if (!username) return;
+
+  const q = query(collection(db, "users"), where("username", "==", username));
+  const querySnapshot = await getDocs(q);
+
+  if (!querySnapshot.empty) {
+    alert("Ese nombre ya está en uso.");
+    askUsername(user);
+    return;
+  }
+
+  await setDoc(doc(db, "users", user.uid), {
+    email: user.email,
+    username: username,
+    puntos: 0,
+    rol: "usuario",
+    fechaRegistro: new Date()
+  });
+
+  showUser(username);
+}
+
+function showUser(username) {
+  document.getElementById("loginArea").style.display = "none";
+  document.getElementById("userInfo").style.display = "block";
+  document.getElementById("userEmail").innerText = "Usuario: " + username;
+}
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    document.getElementById("loginArea").style.display = "none";
-    document.getElementById("userInfo").style.display = "block";
-    document.getElementById("userEmail").innerText = "Sesión iniciada como: " + user.email;
+    checkUser(user);
   } else {
     document.getElementById("loginArea").style.display = "block";
     document.getElementById("userInfo").style.display = "none";
